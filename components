@@ -1,1 +1,1368 @@
 
+import React from 'react';
+import { clsx } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+interface ContainerProps {
+  children: React.ReactNode;
+  className?: string;
+}
+
+export function Container({ children, className }: ContainerProps) {
+  return (
+    <div className={twMerge(clsx("max-w-[1440px] mx-auto px-6 md:px-10 lg:px-20", className))}>
+      {children}
+    </div>
+  );
+}
+
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Container } from './Container';
+import neutralImg from 'figma:asset/fa9e52e2b50c281ab1b0c0557ab10d4b39b1f715.png';
+import coldImg from 'figma:asset/0ba8112b682b0fc6c167ea5a6668b60ffa4a4405.png';
+import hotImg from 'figma:asset/0d2fd76e28639ad958a020604d29c580ce04a511.png';
+
+// Placeholder images - replace with your own
+const envImages = {
+  Cold: coldImg,
+  Neutral: neutralImg,
+  Hot: hotImg
+};
+
+const environments = [
+  { id: 'Cold', label: 'Cold', color: 'text-cyan-600', bg: 'bg-cyan-50', border: 'border-cyan-200' },
+  { id: 'Neutral', label: 'Neutral', color: 'text-slate-600', bg: 'bg-slate-50', border: 'border-slate-200' },
+  { id: 'Hot', label: 'Hot', color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-200' }
+];
+
+export function Environments() {
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const resumeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Auto-switch loop
+  useEffect(() => {
+    if (isPaused) return;
+
+    const interval = setInterval(() => {
+      setSelectedIndex((prev) => (prev + 1) % environments.length);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [isPaused]);
+
+  const clearResumeTimeout = () => {
+    if (resumeTimeoutRef.current) {
+      clearTimeout(resumeTimeoutRef.current);
+      resumeTimeoutRef.current = null;
+    }
+  };
+
+  const handleMouseEnter = (index: number) => {
+    clearResumeTimeout();
+    setIsPaused(true);
+    setSelectedIndex(index);
+  };
+
+  const handleMouseLeave = () => {
+    clearResumeTimeout();
+    resumeTimeoutRef.current = setTimeout(() => {
+      setIsPaused(false);
+    }, 1500);
+  };
+
+  const handleClick = (index: number) => {
+    clearResumeTimeout();
+    setIsPaused(true);
+    setSelectedIndex(index);
+    // Resume after 7 seconds (approx 6-8s range)
+    resumeTimeoutRef.current = setTimeout(() => {
+      setIsPaused(false);
+    }, 7000);
+  };
+
+  const selectedEnv = environments[selectedIndex];
+
+  return (
+    <section className="py-16 bg-white border-b border-slate-100">
+      <Container>
+        <div className="flex flex-col items-center">
+          
+          <motion.h2 
+             initial={{ opacity: 0, y: 10 }}
+             whileInView={{ opacity: 1, y: 0 }}
+             viewport={{ once: true }}
+             className="text-2xl font-bold text-slate-900 mb-8"
+          >
+             VR Environments
+          </motion.h2>
+
+          {/* Chips / Tabs */}
+          <motion.div 
+             initial={{ opacity: 0, y: 20 }}
+             whileInView={{ opacity: 1, y: 0 }}
+             viewport={{ once: true }}
+             transition={{ delay: 0.1 }}
+             className="flex flex-wrap justify-center gap-4 mb-10"
+             onMouseLeave={handleMouseLeave}
+          >
+            {environments.map((env, index) => (
+              <motion.button
+                key={env.id}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handleClick(index)}
+                onMouseEnter={() => handleMouseEnter(index)}
+                className={`
+                  relative px-6 py-2.5 rounded-full text-sm font-bold tracking-wide transition-all duration-200 border
+                  ${selectedIndex === index 
+                    ? `${env.bg} ${env.color} ${env.border} shadow-sm scale-105` 
+                    : 'bg-white text-slate-400 border-slate-100 hover:border-slate-200 hover:bg-slate-50'
+                  }
+                `}
+              >
+                {env.label}
+              </motion.button>
+            ))}
+          </motion.div>
+
+          {/* Preview Panel */}
+          <motion.div 
+             initial={{ opacity: 0, y: 30 }}
+             whileInView={{ opacity: 1, y: 0 }}
+             viewport={{ once: true }}
+             transition={{ delay: 0.2 }}
+             className="relative w-full max-w-4xl h-[400px] bg-slate-100 rounded-3xl overflow-hidden shadow-lg border border-purple-100/50"
+          >
+            <AnimatePresence mode="popLayout">
+              <motion.img
+                key={selectedEnv.id}
+                src={envImages[selectedEnv.id as keyof typeof envImages]}
+                alt={`${selectedEnv.label} Environment`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.8 }}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            </AnimatePresence>
+            
+            {/* Overlay Label */}
+            <motion.div 
+               key={`label-${selectedEnv.id}`}
+               initial={{ opacity: 0, y: 10 }}
+               animate={{ opacity: 1, y: 0 }}
+               transition={{ delay: 0.4 }}
+               className="absolute bottom-6 left-6 bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl border border-white/50 shadow-sm"
+            >
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Preview: </span>
+              <span className="font-bold text-slate-900 ml-1">{selectedEnv.label} World</span>
+            </motion.div>
+          </motion.div>
+
+        </div>
+      </Container>
+    </section>
+  );
+}
+
+import { useRef, useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Eye, Coins, RefreshCw, Play, Sigma, Scale, MapPin, ArrowRight, Clock } from 'lucide-react';
+import { Container } from './Container';
+
+const sequence = [
+  { type: 'state', label: "Entry", duration: "3s", color: "bg-slate-800 text-white" },
+  { type: 'rating', label: "Baseline Ratings", duration: "12s" },
+  { type: 'task', icon: Eye, title: "Passive View", duration: "~1 min", color: "bg-blue-50 text-blue-600 border-blue-200" },
+  { type: 'rating', label: "Ratings", duration: "12s" },
+  { type: 'task', icon: Sigma, title: "Prob. Learning", duration: "~2:30", color: "bg-indigo-50 text-indigo-600 border-indigo-200" },
+  { type: 'rating', label: "Ratings", duration: "12s" },
+  { type: 'task', icon: Scale, title: "Mixed Gamble", duration: "~2:30", color: "bg-violet-50 text-violet-600 border-violet-200" },
+  { type: 'rating', label: "Ratings", duration: "12s" },
+  { type: 'task', icon: Coins, title: "Delay Discount", duration: "~2:00", color: "bg-purple-50 text-purple-600 border-purple-200" },
+  { type: 'rating', label: "Ratings", duration: "12s" },
+  { type: 'task', icon: MapPin, title: "BART", duration: "~3:00", color: "bg-fuchsia-50 text-fuchsia-600 border-fuchsia-200" },
+  { type: 'rating', label: "Ratings", duration: "12s" },
+];
+
+export function ExperimentFlow() {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [showScrollHint, setShowScrollHint] = useState(false);
+  const [highlightBart, setHighlightBart] = useState(false);
+  const bartRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const card = bartRef.current;
+    if (!card) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          // Once visible, wait 3 seconds then highlight
+          const timer = setTimeout(() => {
+            setHighlightBart(true);
+          }, 3000);
+          
+          observer.disconnect(); // Only trigger once
+        }
+      },
+      { threshold: 0.5 }
+    );
+
+    observer.observe(card);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const scrollContainer = scrollRef.current;
+    if (!scrollContainer) return;
+
+    const checkScroll = () => {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainer;
+      // Show hint if there is scrollable content to the right (> 50px remaining)
+      // and the content is actually scrollable (scrollWidth > clientWidth)
+      const isScrollable = scrollWidth > clientWidth;
+      const remaining = scrollWidth - (scrollLeft + clientWidth);
+      
+      setShowScrollHint(isScrollable && remaining > 50);
+    };
+
+    // Check immediately and on resize/scroll
+    checkScroll();
+    scrollContainer.addEventListener('scroll', checkScroll);
+    window.addEventListener('resize', checkScroll);
+
+    return () => {
+      scrollContainer.removeEventListener('scroll', checkScroll);
+      window.removeEventListener('resize', checkScroll);
+    };
+  }, []);
+
+  useEffect(() => {
+    const scrollContainer = scrollRef.current;
+    if (!scrollContainer) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          // Subtle auto-scroll hint on first view
+          const hasScrolled = sessionStorage.getItem('experimentFlowScrolled');
+          if (!hasScrolled) {
+            setTimeout(() => {
+              scrollContainer.scrollTo({ left: 120, behavior: 'smooth' });
+              setTimeout(() => {
+                scrollContainer.scrollTo({ left: 0, behavior: 'smooth' });
+                sessionStorage.setItem('experimentFlowScrolled', 'true');
+              }, 1200);
+            }, 1000);
+          }
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.3 }
+    );
+
+    observer.observe(scrollContainer);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <section className="py-20 bg-slate-50 overflow-hidden">
+      <Container>
+        <div className="mb-12 text-center">
+          <h2 className="text-3xl font-bold text-slate-900 mb-4">Experiment Protocol</h2>
+          <p className="text-slate-600 max-w-2xl mx-auto">
+            Each participant completes three blocks (Warm, Neutral, Cold). Within each block, a fixed sequence of tasks and ratings is strictly enforced.
+          </p>
+        </div>
+
+        {/* Main Container Card */}
+        <div className="bg-white rounded-3xl shadow-xl border border-slate-100 p-8 lg:p-12 relative">
+          
+          {/* Top Header Row */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6 border-b border-slate-100 pb-8">
+            <div>
+              <h3 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
+                Single Block Flow
+                <span className="bg-purple-100 text-purple-700 text-xs px-2 py-1 rounded-full font-bold uppercase tracking-wide">~12 min</span>
+              </h3>
+              <p className="text-slate-500 text-xs mt-1 font-medium">
+                Order rule: Hot/Cold start randomized; Neutral is always the middle block.
+              </p>
+            </div>
+            
+            <div className="flex flex-col items-end gap-2">
+              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Design</div>
+              <div className="flex gap-2">
+                <span className="bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg text-sm font-medium border border-slate-200">
+                  Within-Subjects
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Diagram Area - Scrollable */}
+          <div className="relative">
+            <div 
+              ref={scrollRef}
+              className="relative w-full overflow-x-auto pb-4 hide-scrollbar"
+            >
+              <div className="min-w-max flex items-center gap-3 py-4 px-2">
+              
+              {/* Start Node */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center shadow-lg z-10">
+                  <Play className="w-4 h-4 fill-current" />
+                </div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase">Start</div>
+              </div>
+
+              {/* Connector */}
+              <div className="w-6 h-0.5 bg-slate-200"></div>
+
+              {/* Sequence Loop */}
+              {sequence.map((item, idx) => (
+                <div key={idx} className="flex items-center gap-3">
+                  
+                  {/* Item Render */}
+                  {item.type === 'state' && (
+                    <div className={`${item.color} px-4 py-2 rounded-xl text-xs font-bold shadow-md`}>
+                      {item.label} <span className="opacity-70 ml-1">({item.duration})</span>
+                    </div>
+                  )}
+
+                  {item.type === 'rating' && (
+                    <div className="flex flex-col items-center gap-1 group">
+                      <div className="flex flex-col gap-1.5">
+                        <div className="bg-slate-100 border border-slate-200 text-slate-500 px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wide group-hover:bg-purple-50 group-hover:text-purple-600 group-hover:border-purple-200 transition-colors cursor-default min-w-[50px] text-center">
+                          TSV 6s
+                        </div>
+                        <div className="bg-slate-100 border border-slate-200 text-slate-500 px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wide group-hover:bg-purple-50 group-hover:text-purple-600 group-hover:border-purple-200 transition-colors cursor-default min-w-[50px] text-center">
+                          TCV 6s
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {item.type === 'task' && (
+                    <motion.div 
+                      ref={item.title === "BART" ? bartRef : undefined}
+                      whileHover={{ y: -2 }}
+                      className={`flex flex-col items-center justify-center w-28 h-24 rounded-xl border-2 ${item.color} bg-white shadow-sm p-2 relative transition-all duration-700 ${item.title === "BART" && highlightBart ? "ring-2 ring-fuchsia-300 ring-offset-2 shadow-[0_0_20px_rgba(232,121,249,0.4)]" : ""}`}
+                    >
+                      {item.icon && <item.icon className="w-6 h-6 mb-2 opacity-80" />}
+                      <div className="text-xs font-bold text-center leading-tight text-slate-900">{item.title}</div>
+                      <div className="text-[10px] mt-1 font-medium opacity-70">{item.duration}</div>
+                      
+                      {/* Connection Dots */}
+                      <div className="absolute -left-1.5 top-1/2 w-3 h-3 bg-white border-2 border-slate-200 rounded-full transform -translate-y-1/2"></div>
+                      <div className="absolute -right-1.5 top-1/2 w-3 h-3 bg-white border-2 border-slate-200 rounded-full transform -translate-y-1/2"></div>
+
+                      {/* Fixed Time Label */}
+                      {item.title === "BART" && (
+                        <AnimatePresence>
+                          {highlightBart && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.9, y: 5 }}
+                              animate={{ opacity: 1, scale: 1, y: 0 }}
+                              className="absolute -top-3 -right-4 bg-fuchsia-100 text-fuchsia-700 text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm border border-fuchsia-200 whitespace-nowrap z-10"
+                            >
+                              Fixed time
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      )}
+                    </motion.div>
+                  )}
+
+                  {/* Connector Line to Next (unless last) */}
+                  {idx < sequence.length - 1 && (
+                    <div className="w-4 h-0.5 bg-slate-200"></div>
+                  )}
+                </div>
+              ))}
+
+              {/* End Connector */}
+              <div className="w-6 h-0.5 bg-slate-200"></div>
+
+              {/* End Node */}
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-10 h-10 rounded-full bg-slate-100 border-2 border-slate-300 text-slate-400 flex items-center justify-center z-10">
+                  <RefreshCw className="w-4 h-4" />
+                </div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase">Next Env</div>
+              </div>
+
+              </div>
+
+            </div>
+
+            {/* Scroll Hint Overlay */}
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: showScrollHint ? 1 : 0 }}
+              transition={{ duration: 0.5, ease: "easeInOut" }}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-20 flex items-center gap-2 pointer-events-none pr-2 bg-gradient-to-l from-white via-white/90 to-transparent py-8 pl-12"
+            >
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider hidden sm:inline-block">Scroll</span>
+              <motion.div
+                animate={{ x: [0, 6, 0], opacity: [0.6, 1, 0.6] }}
+                transition={{ 
+                  duration: 2, 
+                  ease: "easeInOut", 
+                  repeat: Infinity, 
+                  repeatDelay: 5 
+                }}
+              >
+                <ArrowRight className="w-5 h-5 text-slate-400" />
+              </motion.div>
+            </motion.div>
+          </div>
+          
+        </div>
+        {/* Explanation Card */}
+        <AnimatePresence>
+          {highlightBart && (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              className="max-w-xl mx-auto bg-white rounded-2xl border border-slate-100 p-6 shadow-sm mt-8"
+            >
+              <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-fuchsia-500" />
+                Why fixed durations?
+              </h4>
+              <ul className="space-y-2.5">
+                <li className="flex items-start gap-3 text-sm text-slate-600">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1.5 shrink-0" />
+                  <span>Same exposure time across environments → fair comparisons.</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm text-slate-600">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1.5 shrink-0" />
+                  <span>Probe timing is consistent for TSV/TCV + skin temperature.</span>
+                </li>
+                <li className="flex items-start gap-3 text-sm text-slate-600">
+                  <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-300 mt-1.5 shrink-0" />
+                  <span>BART is time-fixed because pacing varies across people.</span>
+                </li>
+              </ul>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Container>
+    </section>
+  );
+}
+
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { ArrowDown } from 'lucide-react';
+import { Container } from './Container';
+
+const probes = [
+  "TSV probe",
+  "TCV probe",
+  "Skin temp (Hand)",
+  "Skin temp (Chest)"
+];
+
+export function Hero() {
+  const [probeIndex, setProbeIndex] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setProbeIndex((prev) => (prev + 1) % probes.length);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const scrollToFlow = () => {
+    const element = document.getElementById('experiment-flow');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  return (
+    <section className="relative w-full min-h-[90vh] flex items-center justify-center bg-slate-50/50 overflow-hidden py-24">
+      
+      {/* 1) Thermal Aura Background */}
+      <div className="absolute inset-0 flex items-center justify-center -z-10 pointer-events-none">
+        <motion.div 
+           animate={{ 
+             scale: [1, 1.2, 1], 
+             rotate: [0, 90, 0],
+             opacity: [0.3, 0.5, 0.3]
+           }}
+           transition={{ 
+             duration: 15, 
+             repeat: Infinity, 
+             ease: "easeInOut" 
+           }}
+           className="w-[800px] h-[800px] rounded-full bg-gradient-to-tr from-purple-200/40 via-fuchsia-100/30 to-indigo-100/40 blur-[100px]" 
+        />
+        {/* Grain overlay */}
+        <div className="absolute inset-0 opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay"></div>
+      </div>
+
+      <Container>
+        <div className="max-w-4xl mx-auto text-center relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+          >
+            <motion.h1 
+               initial={{ opacity: 0, y: 20 }}
+               animate={{ opacity: 1, y: 0 }}
+               transition={{ duration: 0.8, delay: 0.1 }}
+               className="text-5xl md:text-7xl font-bold tracking-tight text-slate-900 mb-6 font-serif"
+            >
+              Thermal Responses in <span className="text-purple-600">Multi-Sensory VR</span>
+            </motion.h1>
+            
+            <motion.p 
+               initial={{ opacity: 0, y: 20 }}
+               animate={{ opacity: 1, y: 0 }}
+               transition={{ duration: 0.8, delay: 0.2 }}
+               className="text-xl md:text-2xl text-slate-600 mb-6 font-light"
+            >
+              A multisensory VR study tracking perception &amp; physiology.
+            </motion.p>
+
+            {/* 2) Research Question */}
+            <motion.p 
+               initial={{ opacity: 0 }}
+               animate={{ opacity: 1 }}
+               transition={{ duration: 1, delay: 0.4 }}
+               className="text-lg md:text-xl text-slate-500 font-medium italic mb-12"
+            >“Does VR induce physiological thermal responses?”</motion.p>
+
+            {/* Rotating Probe Line */}
+            <div className="h-8 mb-12 flex items-center justify-center">
+              <AnimatePresence mode="wait">
+                
+              </AnimatePresence>
+            </div>
+
+            {/* 3) Cleaner CTA & Scroll Indicator */}
+            <div className="flex flex-col items-center gap-6">
+              <motion.button 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                whileHover={{ scale: 1.02 }}
+                transition={{ duration: 0.5, delay: 0.5 }}
+                onClick={scrollToFlow}
+                className="text-slate-900 hover:text-purple-700 text-lg font-medium border-b-2 border-slate-200 hover:border-purple-300 pb-1 transition-all"
+              >
+                See the experiment flow
+              </motion.button>
+              
+              <motion.div
+                animate={{ y: [0, 8, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                className="text-slate-300"
+              >
+                <ArrowDown className="w-5 h-5" />
+              </motion.div>
+            </div>
+
+          </motion.div>
+        </div>
+      </Container>
+    </section>
+  );
+}
+
+import { useState, useEffect, useRef } from 'react';
+import { motion } from 'motion/react';
+import { Thermometer, Sliders, Hand, User } from 'lucide-react';
+import { Container } from './Container';
+import handImg from 'figma:asset/6d400144e383b4245b559bd0cd332c46606ce7f9.png';
+import chestImg from 'figma:asset/b948dee0a4aefdb1564d1d2965ff6e6b1fe3d713.png';
+import tsvImg from 'figma:asset/d3d10c550134f342e40e14f03b9c5295b81ac61f.png';
+import tcvImg from 'figma:asset/6c6e2f537ad3eeba0ed060627e8242660a37d3d2.png';
+
+const measures = [
+  {
+    title: "TSV",
+    subtitle: "Thermal Sensation Vote",
+    desc: "",
+    type: "probe",
+    icon: Thermometer,
+    image: tsvImg,
+    bg: "bg-purple-50",
+    text: "text-purple-600"
+  },
+  {
+    title: "TCV",
+    subtitle: "Thermal Comfort Vote",
+    desc: "",
+    type: "probe",
+    icon: Sliders,
+    image: tcvImg,
+    bg: "bg-purple-50",
+    text: "text-purple-600"
+  },
+  {
+    title: "Skin Temp (Hand)",
+    subtitle: "",
+    desc: "Calera sensor",
+    type: "sensor",
+    icon: Hand,
+    image: handImg,
+    bg: "bg-indigo-50",
+    text: "text-indigo-600"
+  },
+  {
+    title: "Skin Temp (Chest)",
+    subtitle: "",
+    desc: "Calera sensor",
+    type: "sensor",
+    icon: User,
+    image: chestImg,
+    bg: "bg-indigo-50",
+    text: "text-indigo-600"
+  },
+];
+
+export function Measures() {
+  const [hoveredGroup, setHoveredGroup] = useState<'subjective' | 'physiological' | null>(null);
+  const [activeCard, setActiveCard] = useState<number | null>(null);
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const [demoActive, setDemoActive] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          const hasShown = sessionStorage.getItem('measuresDemoShown');
+          if (!hasShown) {
+            sessionStorage.setItem('measuresDemoShown', 'true');
+            setTimeout(() => {
+              setDemoActive(true);
+              setTimeout(() => {
+                setDemoActive(false);
+              }, 1200);
+            }, 500);
+          }
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.3 }
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  const handleInteraction = () => {
+    if (!hasInteracted) {
+      setHasInteracted(true);
+    }
+  };
+
+  const handleMouseEnter = (type: string, idx: number) => {
+    handleInteraction();
+    setHoveredGroup(type === 'probe' ? 'subjective' : 'physiological');
+    setActiveCard(idx);
+  };
+
+  const handleMouseLeave = () => {
+    setHoveredGroup(null);
+    setActiveCard(null);
+  };
+
+  const handleMobileClick = (type: string, idx: number) => {
+    handleInteraction();
+    if (activeCard === idx) {
+      setActiveCard(null);
+      setHoveredGroup(null);
+    } else {
+      setActiveCard(idx);
+      setHoveredGroup(type === 'probe' ? 'subjective' : 'physiological');
+    }
+  };
+
+  return (
+    <section ref={sectionRef} className="py-20 bg-slate-50/80 border-t border-slate-100">
+      <Container>
+        <div className="mb-12">
+          <motion.h2 
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-3xl font-serif font-bold text-slate-900"
+          >
+            Measures
+          </motion.h2>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 relative">
+          
+          {/* Shared Highlights */}
+          {hoveredGroup === 'subjective' && (
+             <motion.div 
+               layoutId="group-highlight"
+               initial={{ opacity: 0 }}
+               animate={{ opacity: 1 }}
+               exit={{ opacity: 0 }}
+               transition={{ duration: 0.3 }}
+               className="hidden md:block absolute top-[-20px] bottom-[-20px] left-[-20px] w-[calc(50%+10px)] rounded-[40px] border-2 border-purple-200 bg-purple-50/30 z-0 pointer-events-none"
+             >
+                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">
+                   Subjective measures
+                </div>
+             </motion.div>
+          )}
+
+          {hoveredGroup === 'physiological' && (
+             <motion.div 
+               layoutId="group-highlight"
+               initial={{ opacity: 0 }}
+               animate={{ opacity: 1 }}
+               exit={{ opacity: 0 }}
+               transition={{ duration: 0.3 }}
+               className="hidden md:block absolute top-[-20px] bottom-[-20px] right-[-20px] w-[calc(50%+10px)] rounded-[40px] border-2 border-indigo-200 bg-indigo-50/30 z-0 pointer-events-none"
+             >
+                <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider shadow-sm">
+                   Physiological measures
+                </div>
+             </motion.div>
+          )}
+
+          {measures.map((m, idx) => {
+            // Determine dimming state
+            let isDimmed = false;
+            if (hoveredGroup === 'subjective' && m.type !== 'probe') isDimmed = true;
+            if (hoveredGroup === 'physiological' && m.type !== 'sensor') isDimmed = true;
+
+            const isActive = activeCard === idx || (idx === 0 && demoActive);
+
+            return (
+              <motion.div
+                key={idx}
+                onMouseEnter={() => handleMouseEnter(m.type, idx)}
+                onMouseLeave={handleMouseLeave}
+                onClick={() => handleMobileClick(m.type, idx)}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1, duration: 0.5 }}
+                animate={{ 
+                    opacity: isDimmed ? 0.5 : 1,
+                    scale: isDimmed ? 0.98 : 1,
+                    // If active (hovered), we can add extra scale or shadow if needed, 
+                    // but the inner content swap is the main effect.
+                }}
+                whileHover={{ 
+                  y: -8, 
+                  scale: 1.02,
+                  zIndex: 10,
+                  boxShadow: "0 10px 30px -10px rgba(139, 92, 246, 0.2)",
+                  transition: { type: "spring", stiffness: 300, damping: 20 }
+                }}
+                className="group relative bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden aspect-[3/4] cursor-pointer z-10"
+              >
+                  {/* Full Cover Image Layer */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 1.03 }}
+                    animate={{ 
+                      opacity: isActive ? 1 : 0, 
+                      scale: isActive ? 1 : 1.03 
+                    }}
+                    transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                    className="absolute inset-0 z-20 pointer-events-none"
+                  >
+                    <div className="absolute inset-0 bg-black/20 z-10" /> {/* Slight overlay for text contrast if we wanted text, but user said text hides */}
+                    <img 
+                      src={m.image} 
+                      alt={m.title} 
+                      className="w-full h-full object-cover"
+                    />
+                  </motion.div>
+
+                  <div className="flex flex-col items-center justify-center p-8 h-full relative text-center">
+                     {/* Interaction Hint */}
+                     <motion.div
+                       initial={{ opacity: 0 }}
+                       animate={{ opacity: hasInteracted ? 0 : 1 }}
+                       transition={{ duration: 0.5, delay: 0.5 }}
+                       className="absolute bottom-4 right-4 z-30 pointer-events-none"
+                     >
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 hidden md:block">
+                          Hover to preview
+                        </span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 md:hidden block">
+                          Tap to preview
+                        </span>
+                     </motion.div>
+
+                     {/* Main Content - Centered */}
+                     <motion.div
+                        animate={{ 
+                          opacity: isActive ? 0 : 1,
+                          filter: isActive ? 'blur(4px)' : 'blur(0px)'
+                        }}
+                        transition={{ duration: 0.3 }}
+                        className="relative z-10 flex flex-col items-center w-full"
+                     >
+                       <div className={`w-12 h-12 rounded-2xl mb-5 flex items-center justify-center ${m.bg} ${m.text}`}>
+                          <m.icon className="w-6 h-6" />
+                       </div>
+                       
+                       <h3 className="text-xl font-bold text-slate-900 mb-1 leading-tight">{m.title}</h3>
+                       {m.subtitle && (
+                         <div className="text-sm font-medium text-slate-500 mb-3">{m.subtitle}</div>
+                       )}
+                       
+                       <div className="w-10 h-0.5 bg-slate-100 rounded-full mb-3 mx-auto" />
+                       
+                       <p className="text-xs text-slate-400 font-medium leading-tight max-w-[140px]">
+                         {m.desc}
+                       </p>
+                     </motion.div>
+                  </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </Container>
+    </section>
+  );
+}
+
+import { motion } from 'motion/react';
+import { Users, Headset, FileText, Download } from 'lucide-react';
+import { Container } from './Container';
+
+const items = [
+  {
+    icon: Users,
+    title: "Participants (Pilot)",
+    bullets: [
+      "Adults 18–39",
+      "Normal or corrected-to-normal vision",
+      "VR eligible",
+      "N = 15 (pilot)"
+    ]
+  },
+  {
+    icon: Headset,
+    title: "Equipment",
+    bullets: [
+      "Meta Quest Pro VR headset",
+      "Calera skin temperature sensors",
+      "Two sensors: hand + chest"
+    ]
+  }
+];
+
+export function Method() {
+  return (
+    <section className="py-20 bg-slate-50/50">
+      <Container>
+        <div className="mb-12 flex flex-col items-start gap-6">
+          <motion.h2 
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-3xl font-serif font-bold text-slate-900"
+          >
+            Method
+          </motion.h2>
+          
+          <motion.div
+            initial={{ opacity: 0, x: -10 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="flex flex-col sm:flex-row gap-8 items-start"
+          >
+            {/* Preregistration Button */}
+            <button 
+              disabled
+              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-400 bg-white border border-slate-200 rounded-full cursor-not-allowed hover:bg-slate-50 transition-colors"
+            >
+              <FileText className="w-4 h-4" />
+              <span>OSF Preregistration (coming soon)</span>
+            </button>
+
+            {/* Resources / Download Section */}
+            <div className="flex flex-col gap-2">
+              <a 
+                href="https://docs.google.com/document/d/1F9Q35kPC0quv3r1zfLsafHPycxGvlxS0/edit?usp=sharing&ouid=100430484849345760545&rtpof=true&sd=true"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wide text-purple-700 bg-white border border-purple-200 rounded-full shadow-sm hover:bg-purple-50 hover:border-purple-300 transition-all hover:-translate-y-0.5"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download full protocol (Word)</span>
+              </a>
+              
+            </div>
+          </motion.div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+          {items.map((item, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: idx * 0.1, duration: 0.4 }}
+              whileHover={{ 
+                y: -8, 
+                scale: 1.02,
+                boxShadow: "0 10px 30px -10px rgba(139, 92, 246, 0.2)"
+              }}
+              className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm transition-all h-full"
+            >
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-600">
+                  <item.icon className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900">{item.title}</h3>
+              </div>
+              <ul className="space-y-3">
+                {item.bullets.map((bullet, i) => (
+                  <li key={i} className="flex items-start gap-3 text-slate-600 leading-relaxed font-medium text-sm">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-300 mt-2 flex-shrink-0" />
+                    <span>{bullet}</span>
+                  </li>
+                ))}
+              </ul>
+            </motion.div>
+          ))}
+        </div>
+      </Container>
+    </section>
+  );
+}
+
+import { motion } from 'motion/react';
+import { Clock } from 'lucide-react';
+import { Container } from './Container';
+
+export function Rationale() {
+  return (
+    null
+  );
+}
+
+import { motion } from 'motion/react';
+import { Download, Mail, Building, User, FileText } from 'lucide-react';
+import { Container } from './Container';
+
+export function SlidesContact() {
+  return (
+    <section className="py-24 bg-slate-50 relative overflow-hidden">
+      {/* Background Decorative Blob */}
+      <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-purple-200/30 rounded-full blur-3xl pointer-events-none" />
+
+      <Container>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+          
+          {/* Slides Section */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-3xl font-bold text-slate-900">Project Slides</h2>
+              <button className="flex items-center gap-2 text-purple-600 hover:text-purple-700 font-semibold transition-colors">
+                <Download className="w-4 h-4" />
+                Download PDF
+              </button>
+            </div>
+            
+            <div className="w-full aspect-video bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col items-center justify-center group cursor-pointer hover:border-purple-200 transition-colors relative overflow-hidden">
+              <div className="absolute inset-0 bg-slate-50/50 group-hover:bg-purple-50/10 transition-colors" />
+              <FileText className="w-16 h-16 text-slate-300 mb-4 group-hover:text-purple-300 transition-colors" />
+              <span className="text-slate-400 font-medium group-hover:text-purple-400 transition-colors">Slides (PDF) Preview</span>
+              <div className="absolute inset-0 border-2 border-dashed border-slate-200 rounded-2xl m-4 pointer-events-none group-hover:border-purple-200 transition-colors" />
+            </div>
+            
+            <p className="text-slate-500 text-sm leading-relaxed">
+              Detailed breakdown of methodology, statistical analysis, and discussion of results across all three thermal environments.
+            </p>
+          </div>
+
+          {/* Contact Section */}
+          <div className="bg-white p-8 md:p-10 rounded-3xl shadow-xl shadow-purple-900/5 border border-purple-50 space-y-8 relative">
+            <div>
+              <h2 className="text-3xl font-bold text-slate-900 mb-2">Get in touch</h2>
+              <p className="text-slate-500">
+                Interested in this research? Feel free to reach out for collaboration or questions.
+              </p>
+            </div>
+
+            <div className="space-y-6">
+              <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-50 hover:bg-purple-50 transition-colors group">
+                <div className="bg-white p-3 rounded-lg shadow-sm text-slate-400 group-hover:text-purple-500 transition-colors">
+                  <User className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Researcher</div>
+                  <div className="font-semibold text-slate-900 text-lg">Yana Naidich</div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-50 hover:bg-purple-50 transition-colors group">
+                <div className="bg-white p-3 rounded-lg shadow-sm text-slate-400 group-hover:text-purple-500 transition-colors">
+                  <Building className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Lab / Affiliation</div>
+                  <div className="font-semibold text-slate-900 text-lg">Multisensory VR Lab</div>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-50 hover:bg-purple-50 transition-colors group">
+                <div className="bg-white p-3 rounded-lg shadow-sm text-slate-400 group-hover:text-purple-500 transition-colors">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">Email</div>
+                  <a href="mailto:yana.naidich@example.edu" className="font-semibold text-purple-600 text-lg hover:underline">
+                    yana.naidich@example.edu
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </Container>
+    </section>
+  );
+}
+
+import { motion } from 'motion/react';
+import { Thermometer, Hand, Activity } from 'lucide-react';
+import { Container } from './Container';
+
+const cards = [
+  {
+    icon: Thermometer,
+    title: "Visual Cues",
+    text: "Visual cues (e.g., color and lighting) can shift perceived warmth/coolness and thermal comfort even when ambient temperature is unchanged.",
+    citation: "(Chinazzo et al., 2021)",
+    gradient: "from-purple-500 to-indigo-600",
+    bg: "bg-purple-50",
+    border: "border-purple-100"
+  },
+  {
+    icon: Hand,
+    title: "Virtual Hands",
+    text: "In VR, the appearance of virtual hands can modulate thermal sensation.",
+    citation: "(Kocur et al., 2023)",
+    gradient: "from-fuchsia-500 to-purple-600",
+    bg: "bg-fuchsia-50",
+    border: "border-fuchsia-100"
+  },
+  {
+    icon: Activity,
+    title: "The Gap",
+    text: "Subjective ratings often shift more consistently than physiological measures (e.g., skin temperature), especially over longer exposures.",
+    citation: "(Valletta et al., 2025)",
+    gradient: "from-violet-500 to-purple-600",
+    bg: "bg-violet-50",
+    border: "border-violet-100"
+  }
+];
+
+export function Story() {
+  return (
+    <section className="py-20 bg-white">
+      <Container>
+        <div className="mb-12 max-w-3xl">
+          <motion.h2 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-3xl font-bold text-slate-900 mb-6"
+          >
+            Background
+          </motion.h2>
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1 }}
+            className="text-lg text-slate-600 leading-relaxed"
+          >
+            Previous research suggests that multisensory cues in VR can significantly influence thermal perception, potentially bridging the gap between subjective experience and physiological responses. However, consistent measurement across different sensory modalities remains a challenge.
+          </motion.p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {cards.map((card, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: index * 0.1, duration: 0.5 }}
+              whileHover={{ 
+                y: -10, 
+                scale: 1.02, 
+                boxShadow: "0 10px 30px -10px rgba(139, 92, 246, 0.2)" // soft lilac glow
+              }}
+              className={`p-8 rounded-2xl border ${card.border} ${card.bg} relative overflow-hidden group transition-all duration-300`}
+            >
+              {/* Subtle background glow */}
+              <div className={`absolute -right-10 -top-10 w-32 h-32 bg-gradient-to-br ${card.gradient} opacity-10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500`} />
+              
+              <motion.div 
+                 whileHover={{ scale: 1.1, rotate: 10 }}
+                 transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                 className={`w-12 h-12 rounded-xl bg-gradient-to-br ${card.gradient} flex items-center justify-center text-white mb-6 shadow-md`}
+              >
+                <card.icon className="w-6 h-6" />
+              </motion.div>
+              
+              <h3 className="text-xl font-bold text-slate-900 mb-3">{card.title}</h3>
+              <p className="text-slate-600 leading-relaxed font-medium mb-3 text-sm">{card.text}</p>
+              <p className="text-xs text-slate-400 font-medium italic">{card.citation}</p>
+            </motion.div>
+          ))}
+        </div>
+      </Container>
+    </section>
+  );
+}
+
+import { useState, useEffect, useRef } from 'react';
+import { motion } from 'motion/react';
+import { Container } from './Container';
+import probLearningImg from 'figma:asset/f43b2f687ee2a41865f01a41a6b03693f23ee9cf.png';
+import bartImg from 'figma:asset/9ac7186e6fddce52bdcdc4825558a99239c66070.png';
+import delayDiscountingImg from 'figma:asset/04c233be5012812917515021ba1dcbc197ad17ff.png';
+import mixedGambleImg from 'figma:asset/c8e50bd8d8e2ba93394f92014d2e38bbc18e630f.png';
+
+const tasks = [
+  {
+    title: "Probability Learning",
+    desc: "A learning task in which two symbols appear on each trial and the participant chooses one. After the choice, feedback is provided, and the participant gradually learns which symbol is more advantageous.",
+    citation: "(Frank et al., 2004)",
+    meta: "64 trials",
+    theme: {
+      bg: "bg-indigo-50/40",
+      border: "border-indigo-100",
+      hoverBorder: "group-hover:border-indigo-300",
+      shadow: "group-hover:shadow-indigo-200/50"
+    },
+    image: probLearningImg
+  },
+  {
+    title: "Mixed Gamble",
+    desc: "On each trial, a mixed gamble with equal chance of gain or loss is presented, and the participant decides whether to accept or reject the gamble.",
+    citation: "(Tom et al., 2007)",
+    meta: "32 trials",
+    theme: {
+      bg: "bg-violet-50/40",
+      border: "border-violet-100",
+      hoverBorder: "group-hover:border-violet-300",
+      shadow: "group-hover:shadow-violet-200/50"
+    },
+    image: mixedGambleImg
+  },
+  {
+    title: "Delay Discounting",
+    desc: "On each trial, the participant chooses between a smaller amount available now and a larger amount available after a delay.",
+    citation: "(Kirby et al., 1999)",
+    meta: "30 trials",
+    theme: {
+      bg: "bg-fuchsia-50/40",
+      border: "border-fuchsia-100",
+      hoverBorder: "group-hover:border-fuchsia-300",
+      shadow: "group-hover:shadow-fuchsia-200/50"
+    },
+    image: delayDiscountingImg
+  },
+  {
+    title: "BART",
+    desc: "A risk-taking task in which the participant inflates a balloon to earn points/money; each pump increases explosion risk and the reward can be lost.",
+    citation: "(Lejuez et al., 2002)",
+    meta: "Fixed duration (3:00)",
+    theme: {
+      bg: "bg-purple-50/40",
+      border: "border-purple-100",
+      hoverBorder: "group-hover:border-purple-300",
+      shadow: "group-hover:shadow-purple-200/50"
+    },
+    image: bartImg
+  }
+];
+
+export function Tasks() {
+  // Track tapped card for mobile toggle behavior
+  const [tappedCard, setTappedCard] = useState<number | null>(null);
+  const [hasInteracted, setHasInteracted] = useState(false);
+  const [demoActive, setDemoActive] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          const hasShown = sessionStorage.getItem('tasksDemoShown');
+          if (!hasShown) {
+            sessionStorage.setItem('tasksDemoShown', 'true');
+            // Start demo after a short delay
+            setTimeout(() => {
+              setDemoActive(true);
+              // End demo after ~1s
+              setTimeout(() => {
+                setDemoActive(false);
+              }, 1200);
+            }, 500);
+          }
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.3 }
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  const handleInteraction = () => {
+    if (!hasInteracted) {
+      setHasInteracted(true);
+    }
+  };
+
+  const handleCardClick = (idx: number) => {
+    handleInteraction();
+    if (tappedCard === idx) {
+      setTappedCard(null);
+    } else {
+      setTappedCard(idx);
+    }
+  };
+
+  return (
+    <section ref={sectionRef} className="py-20 bg-white">
+      <Container>
+        <div className="flex flex-col gap-10">
+          <motion.h2 
+             initial={{ opacity: 0, y: 10 }}
+             whileInView={{ opacity: 1, y: 0 }}
+             viewport={{ once: true }}
+             className="text-3xl font-bold text-slate-900"
+          >
+             Tasks
+          </motion.h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+            {tasks.map((task, idx) => {
+              const isActive = tappedCard === idx || (idx === 0 && demoActive);
+              
+              return (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, y: 12 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-50px" }}
+                  transition={{ delay: idx * 0.1, duration: 0.6, ease: "easeOut" }}
+                  whileHover="hover"
+                  animate={isActive ? "hover" : undefined}
+                  onClick={() => handleCardClick(idx)}
+                  onMouseEnter={handleInteraction}
+                  variants={{
+                    idle: { y: 0, scale: 1 },
+                    hover: { 
+                      y: -8, 
+                      scale: 1.02,
+                      boxShadow: "0 10px 30px -10px rgba(139, 92, 246, 0.2)", // soft lilac glow
+                      transition: { type: "spring", stiffness: 300, damping: 20 }
+                    }
+                  }}
+                  className={`
+                    group relative flex overflow-hidden rounded-3xl border-2 transition-colors duration-300 cursor-pointer h-[380px]
+                    ${task.theme.bg} ${task.theme.border} ${task.theme.hoverBorder} hover:shadow-xl ${task.theme.shadow}
+                  `}
+                >
+                  {/* Image Panel (Left) */}
+                  <motion.div
+                    variants={{
+                      idle: { width: "0%" },
+                      hover: { width: "45%" }
+                    }}
+                    transition={{ type: "spring", stiffness: 200, damping: 25 }}
+                    className="relative h-full flex-shrink-0 overflow-hidden"
+                  >
+                     <motion.div
+                        variants={{
+                            idle: { opacity: 0, scale: 1.1 },
+                            hover: { opacity: 1, scale: 1 }
+                        }}
+                        transition={{ duration: 0.4 }}
+                        className="absolute inset-0 w-full h-full"
+                     >
+                        <div className="absolute inset-0 bg-indigo-900/10 mix-blend-multiply z-10" />
+                        <img 
+                          src={task.image} 
+                          alt={task.title}
+                          className="w-full h-full object-cover"
+                        />
+                     </motion.div>
+                  </motion.div>
+
+                  {/* Interaction Hint */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: hasInteracted ? 0 : 1 }}
+                    transition={{ duration: 0.5, delay: 0.5 }} // Small delay on mount, immediate fade out
+                    className="absolute bottom-4 right-8 z-30 pointer-events-none"
+                  >
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 hidden md:block">
+                      Hover to preview
+                    </span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 md:hidden block">
+                      Tap to preview
+                    </span>
+                  </motion.div>
+
+                  {/* Text Content (Right) */}
+                  <div className="flex-grow flex flex-col p-8 h-full relative z-20">
+                    <h3 className="text-xl font-bold text-slate-900 mb-3 group-hover:text-purple-700 transition-colors">
+                      {task.title}
+                    </h3>
+                    
+                    <div className="flex-grow overflow-hidden">
+                      <p className="text-base font-medium text-slate-600 leading-relaxed mb-2">
+                        {task.desc}
+                      </p>
+                      <p className="text-sm text-slate-400 font-medium italic">
+                        {task.citation}
+                      </p>
+                    </div>
+                    
+                    <div className="mt-auto pt-4 border-t border-slate-200/60 flex items-center justify-between">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500 group-hover:text-purple-600 transition-colors">
+                        {task.meta}
+                      </span>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </div>
+      </Container>
+    </section>
+  );
+}
